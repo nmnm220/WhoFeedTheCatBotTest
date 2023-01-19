@@ -1,7 +1,10 @@
 package io.proj3ct.WhoFeedTheCatBot.service;
 
 import com.vdurmont.emoji.EmojiParser;
+import io.proj3ct.WhoFeedTheCatBot.WhoFedTheCat;
+import io.proj3ct.WhoFeedTheCatBot.WhoFedTheCatDB;
 import io.proj3ct.WhoFeedTheCatBot.config.BotConfig;
+import io.proj3ct.WhoFeedTheCatBot.exceptions.InvalidFoodPriceFormatException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,6 +21,7 @@ import java.util.Date;
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
+    private WhoFedTheCat whoFedTheCat = new WhoFedTheCatDB();
     final BotConfig config;
     @Value("${bot.chat.id}")
     private long chatId;
@@ -43,7 +47,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
 
-        if (update.hasMessage() && update.getMessage().hasText() & parseMessage(update.getMessage().getText())) {
+        if (update.hasMessage() && update.getMessage().hasText() && parseMessage(update.getMessage().getText())) {
             long chatId = update.getMessage().getChatId();
             if (!catFed) {
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("k:mm");
@@ -60,7 +64,31 @@ public class TelegramBot extends TelegramLongPollingBot {
                 sendMessage(chatId,  "Меня уже покормили раньше.");
             }
         }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().equals("/test")) {
+
+            sendMessage(chatId, whoFedTheCat.listPeople().toString());
+        }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().startsWith("/addFood")) {
+            String result = update.getMessage().getText().replaceAll("/addFood ", "");
+            //System.out.println(result.split("\\|")[0] + " " + result.split("\\|")[1]);
+            String brandName = result.split(" ")[0];
+            String price = result.split(" ")[1];
+            int priceInt = Integer.parseInt(price);
+            try {
+                whoFedTheCat.addFood(brandName, priceInt);
+            } catch (InvalidFoodPriceFormatException e) {
+                throw new RuntimeException(e);
+            }
+            sendMessage(chatId, whoFedTheCat.listFood().toString());
+        }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().startsWith("/deleteFood")) {
+            String result = update.getMessage().getText().replaceAll("/deleteFood ", "");
+            int id = Integer.parseInt(result);
+            whoFedTheCat.deleteFood(id);
+            sendMessage(chatId, whoFedTheCat.listFood().toString());
+        }
     }
+
 
     private void sendMessage(long chatId, String textToSend) {
         SendMessage message = new SendMessage();
