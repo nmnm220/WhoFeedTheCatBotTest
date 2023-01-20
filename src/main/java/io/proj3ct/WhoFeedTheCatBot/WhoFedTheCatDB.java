@@ -157,10 +157,11 @@ public class WhoFedTheCatDB implements WhoFedTheCat {
         if (price <= 0) {
             throw new InvalidFoodPriceFormatException("Invalid number");
         }
-        Statement statement = null;
         try {
-            statement = conn.createStatement();
-            statement.executeUpdate(String.format("insert into food (brandname, price) values (\"%s\", %s)", brandName, price));
+            PreparedStatement prepared = conn.prepareStatement("insert into food (brandname, price) values (?, ?)");
+            prepared.setString(1, brandName);
+            prepared.setInt(2, price);
+            prepared.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -177,5 +178,26 @@ public class WhoFedTheCatDB implements WhoFedTheCat {
         } catch (SQLException e) {
         }
 
+    }
+    @Override
+    public String statAllTime() {
+        try {
+            PreparedStatement prepared = conn.prepareStatement("select count(catFeeds.id) as feeds, people.name as person_name from catFeeds left join people on catFeeds.people_id=people.id group by people_id");
+            ResultSet rs = prepared.executeQuery();
+            int mostFeeds = 0;
+            String bestFeeder = "";
+            while (rs.next()) {
+                int feeds = rs.getInt("feeds");
+                String personName = rs.getString("person_name");
+                if (feeds > mostFeeds) {
+                    mostFeeds = feeds;
+                    bestFeeder = personName;
+                }
+            }
+            return bestFeeder + " " + mostFeeds;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return e.getMessage();
+        }
     }
 }

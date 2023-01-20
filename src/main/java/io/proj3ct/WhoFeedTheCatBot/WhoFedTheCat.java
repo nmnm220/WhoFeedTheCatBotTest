@@ -15,4 +15,5 @@ public interface WhoFedTheCat {
     public void updateFood(int id, int price) throws InvalidFoodPriceFormatException;
     public void addFood(String brandName, int price) throws InvalidFoodPriceFormatException;
     public void addCatFeed(int personId, int foodId);
+    public String statAllTime();
 }

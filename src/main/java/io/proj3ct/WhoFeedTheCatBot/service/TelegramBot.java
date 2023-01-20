@@ -70,6 +70,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
         if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().startsWith("/addFood")) {
             String result = update.getMessage().getText().replaceAll("/addFood ", "");
+
             //System.out.println(result.split("\\|")[0] + " " + result.split("\\|")[1]);
             String brandName = result.split(" ")[0];
             String price = result.split(" ")[1];
@@ -86,6 +87,17 @@ public class TelegramBot extends TelegramLongPollingBot {
             int id = Integer.parseInt(result);
             whoFedTheCat.deleteFood(id);
             sendMessage(chatId, whoFedTheCat.listFood().toString());
+        }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().startsWith("/addCatFeed")) {
+            String result = update.getMessage().getText().replaceAll("/addCatFeed ", "");
+            String personId = result.split(" ")[0];
+            String foodId = result.split(" ")[1];
+            int personIdInt = Integer.parseInt(personId);
+            int foodIdInt = Integer.parseInt(foodId);
+            whoFedTheCat.addCatFeed(personIdInt, foodIdInt);
+        }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().startsWith("/stats")) {
+            sendMessage(chatId, whoFedTheCat.statAllTime());
         }
     }
 
