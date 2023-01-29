@@ -1,10 +1,11 @@
 package io.proj3ct.WhoFeedTheCatBot.service;
 
-import com.vdurmont.emoji.EmojiParser;
 import io.proj3ct.WhoFeedTheCatBot.WhoFedTheCat;
 import io.proj3ct.WhoFeedTheCatBot.WhoFedTheCatDB;
 import io.proj3ct.WhoFeedTheCatBot.config.BotConfig;
 import io.proj3ct.WhoFeedTheCatBot.exceptions.InvalidFoodPriceFormatException;
+import io.proj3ct.WhoFeedTheCatBot.objects.Food;
+import io.proj3ct.WhoFeedTheCatBot.objects.Person;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,16 +13,20 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
-    private WhoFedTheCat whoFedTheCat = new WhoFedTheCatDB();
+    private final WhoFedTheCat whoFedTheCat = new WhoFedTheCatDB();
     final BotConfig config;
     @Value("${bot.chat.id}")
     private long chatId;
@@ -46,6 +51,41 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().equals("Stats for all time")) {
+            sendMessage(chatId, whoFedTheCat.getStatsAllTime());
+        }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().equals("Stats for today")) {
+            sendMessage(chatId, whoFedTheCat.getStatsWeek());
+        }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().equals("Feed cat")) {
+            ArrayList<Person> allPeople = whoFedTheCat.listPeople();
+            long personId;
+            for (Person person: allPeople) {
+                if (update.getMessage().getFrom().getId() == Long.parseLong(person.telegramId())) {
+                    personId = person.id();
+                }
+            }
+            ArrayList<Food> allFood = whoFedTheCat.listFood();
+            List<KeyboardRow> keyboardRows = new ArrayList<>();
+            KeyboardRow row = new KeyboardRow();
+            for (Food food: allFood) {
+                row.add(food.brandName());
+                keyboardRows.add(row);
+            }
+            ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+            keyboardMarkup.setResizeKeyboard(true);
+            keyboardMarkup.setKeyboard(keyboardRows);
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Food");
+            message.setReplyMarkup(keyboardMarkup);
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+            //sendMessage(chatId, whoFedTheCat.addCatFeed());
+        }
 
         if (update.hasMessage() && update.getMessage().hasText() && parseMessage(update.getMessage().getText())) {
             long chatId = update.getMessage().getChatId();
@@ -61,7 +101,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             } else {
 
                 //String catNameDec = catName.substring(0, catName.length() - 1) + 'у';
-                sendMessage(chatId,  "Меня уже покормили раньше.");
+                sendMessage(chatId, "Меня уже покормили раньше.");
             }
         }
         if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().equals("/test")) {
@@ -96,8 +136,11 @@ public class TelegramBot extends TelegramLongPollingBot {
             int foodIdInt = Integer.parseInt(foodId);
             whoFedTheCat.addCatFeed(personIdInt, foodIdInt);
         }
-        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().startsWith("/stats")) {
-            sendMessage(chatId, whoFedTheCat.statAllTime());
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().equals("/stats")) {
+            sendMessage(chatId, whoFedTheCat.getStatsAllTime());
+        }
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getText().equals("/statsday")) {
+            sendMessage(chatId, whoFedTheCat.getStatsWeek());
         }
     }
 
@@ -106,6 +149,16 @@ public class TelegramBot extends TelegramLongPollingBot {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(textToSend);
+        List<KeyboardRow> keyboardRows = new ArrayList<>();
+        KeyboardRow row = new KeyboardRow();
+        row.add("Stats for all time");
+        row.add("Stats for today");
+        row.add("Feed cat");
+        keyboardRows.add(row);
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setKeyboard(keyboardRows);
+        message.setReplyMarkup(keyboardMarkup);
 
         try {
             execute(message);

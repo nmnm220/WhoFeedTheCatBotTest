@@ -180,7 +180,7 @@ public class WhoFedTheCatDB implements WhoFedTheCat {
 
     }
     @Override
-    public String statAllTime() {
+    public String getStatsAllTime() {
         try {
             PreparedStatement prepared = conn.prepareStatement("select count(catFeeds.id) as feeds, people.name as person_name from catFeeds left join people on catFeeds.people_id=people.id group by people_id");
             ResultSet rs = prepared.executeQuery();
@@ -198,6 +198,28 @@ public class WhoFedTheCatDB implements WhoFedTheCat {
         } catch (SQLException e) {
             e.printStackTrace();
             return e.getMessage();
+        }
+    }
+    @Override
+    public String getStatsWeek() {
+        PreparedStatement prepared = null;
+        try {
+            prepared = conn.prepareStatement("""
+                    select count(catFeeds.id) as feeds, people.name,strftime('%Y-%m-%d',date) 
+                    as new_time, strftime('%d',date) as day from catFeeds left join people on people_id=people.id 
+                    where day=strftime('%d',current_timestamp) group by new_time, people_id;
+                    """);
+            ResultSet rs = prepared.executeQuery();
+            int mostFeeds = 0;
+            String returnString = "";
+            while (rs.next()) {
+                int feeds = rs.getInt("feeds");
+                String personName = rs.getString("name");
+                returnString += personName + " " + feeds + "\n";
+            }
+            return returnString;
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
     }
 }
