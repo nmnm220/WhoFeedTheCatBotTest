@@ -67,8 +67,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
             ArrayList<Food> allFood = whoFedTheCat.listFood();
             List<KeyboardRow> keyboardRows = new ArrayList<>();
-            KeyboardRow row = new KeyboardRow();
             for (Food food: allFood) {
+                KeyboardRow row = new KeyboardRow();
                 row.add(food.brandName());
                 keyboardRows.add(row);
             }
