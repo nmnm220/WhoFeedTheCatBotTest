@@ -55,13 +55,11 @@ public class TelegramBot extends TelegramLongPollingBot {
             String messageText = update.getMessage().getText();
             if (messageText.equals("Stats for all time")) {
                 sendMessage(chatId, whoFedTheCat.getStatsAllTime());
-                return;
             }
-            if (messageText.equals("Stats for today")) {
+            else if (messageText.equals("Stats for today")) {
                 sendMessage(chatId, whoFedTheCat.getStatsWeek());
-                return;
             }
-            if (messageText.equals("Feed cat")) {
+            else if (messageText.equals("Feed cat")) {
                 ArrayList<Person> allPeople = whoFedTheCat.listPeople();
                 long personId;
                 for (Person person : allPeople) {
@@ -88,10 +86,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                 } catch (TelegramApiException e) {
                     throw new RuntimeException(e);
                 }
-                return;
             }
             //sendMessage(chatId, whoFedTheCat.addCatFeed());
-            if (messageText.startsWith("/addFood")) {
+            else if (messageText.startsWith("/addFood")) {
                 String result = update.getMessage().getText().replaceAll("/addFood ", "");
 
                 //System.out.println(result.split("\\|")[0] + " " + result.split("\\|")[1]);
@@ -104,33 +101,28 @@ public class TelegramBot extends TelegramLongPollingBot {
                     throw new RuntimeException(e);
                 }
                 sendMessage(chatId, whoFedTheCat.listFood().toString());
-                return;
             }
-            if (messageText.startsWith("/deleteFood")) {
+            else if (messageText.startsWith("/deleteFood")) {
                 String result = update.getMessage().getText().replaceAll("/deleteFood ", "");
                 int id = Integer.parseInt(result);
                 whoFedTheCat.deleteFood(id);
                 sendMessage(chatId, whoFedTheCat.listFood().toString());
-                return;
             }
-            if (messageText.startsWith("/addCatFeed")) {
+            else if (messageText.startsWith("/addCatFeed")) {
                 String result = update.getMessage().getText().replaceAll("/addCatFeed ", "");
                 String personIdString = result.split(" ")[0];
                 String foodId = result.split(" ")[1];
                 int personIdInt = Integer.parseInt(personIdString);
                 int foodIdInt = Integer.parseInt(foodId);
                 whoFedTheCat.addCatFeed(personIdInt, foodIdInt);
-                return;
             }
-            if (messageText.equals("/stats")) {
+            else if (messageText.equals("/stats")) {
                 sendMessage(chatId, whoFedTheCat.getStatsAllTime());
-                return;
             }
-            if (messageText.equals("/statsday")) {
+            else if (messageText.equals("/statsday")) {
                 sendMessage(chatId, whoFedTheCat.getStatsWeek());
-                return;
             }
-            if (parseMessage(update.getMessage().getText())) {
+            else if (parseMessage(update.getMessage().getText())) {
                 long chatId = update.getMessage().getChatId();
                 if (!catFed) {
                     SimpleDateFormat simpleDateFormat = new SimpleDateFormat("k:mm");
@@ -144,9 +136,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                     //String catNameDec = catName.substring(0, catName.length() - 1) + 'у';
                     sendMessage(chatId, "Меня уже покормили раньше.");
                 }
-                return;
             }
-            if (messageText.equals("/test")) {
+            else if (messageText.equals("/test")) {
                 sendMessage(chatId, whoFedTheCat.listPeople().toString());
             }
         }
