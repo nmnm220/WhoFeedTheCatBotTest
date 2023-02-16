@@ -201,7 +201,7 @@ public class WhoFedTheCatDB implements WhoFedTheCat {
         }
     }
     @Override
-    public String getStatsWeek() {
+    public String getStatsDay() {
         PreparedStatement prepared = null;
         try {
             prepared = conn.prepareStatement("""

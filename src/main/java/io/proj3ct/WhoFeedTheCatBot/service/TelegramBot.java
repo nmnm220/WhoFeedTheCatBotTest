@@ -54,63 +54,69 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        String messageText = update.getMessage().getText();
         if (isHasText(update) && botState.equals(State.WAITING_FOR_FOOD)) {
-            botState = State.DEFAULT;
-            ArrayList<Food> allFood = whoFedTheCat.listFood();
-            int foodId = allFood.stream()
-                    .filter(food -> update.getMessage().getText().equals(food.brandName()))
-                    .toList().get(0).id();
-            whoFedTheCat.addCatFeed((int) personId, foodId);
+            addCatFeed(update);
+            sendFedMessage(update);
         } else if (isDefaultAndMessage(update, botState, "/statsalltime")) {
-            sendMessage(chatId, whoFedTheCat.getStatsAllTime());
+            sendMessageWithKeyboard(chatId, whoFedTheCat.getStatsAllTime(), false);
         } else if (isDefaultAndMessage(update, botState, "/statstoday")) {
-            sendMessage(chatId, whoFedTheCat.getStatsWeek());
-        } else if (isDefaultAndMessage(update, botState, "/addFood")) {
-            personId = getTelegramIdFromDB(update);
-            SendMessage message = new SendMessage();
-            message.setChatId(chatId);
-            message.setText("Food");
-            message.setReplyMarkup(createFoodKeyboardRows());
-            try {
-                execute(message);
-                botState = State.WAITING_FOR_FOOD;
-            } catch (TelegramApiException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        //sendMessage(chatId, whoFedTheCat.addCatFeed());
-        else if (isDefaultAndMessage(update, botState, "/deleteFood")) {
-            String result = update.getMessage().getText().replaceAll("/deleteFood ", "");
-            int id = Integer.parseInt(result);
-            whoFedTheCat.deleteFood(id);
-            sendMessage(chatId, whoFedTheCat.listFood().toString());
+            sendMessageWithKeyboard(chatId, whoFedTheCat.getStatsDay(), false);
         } else if (isDefaultAndMessage(update, botState, "/addCatFeed")) {
-            String result = update.getMessage().getText().replaceAll("/addCatFeed ", "");
-            String personIdString = result.split(" ")[0];
-            String foodId = result.split(" ")[1];
-            int personIdInt = Integer.parseInt(personIdString);
-            int foodIdInt = Integer.parseInt(foodId);
-            whoFedTheCat.addCatFeed(personIdInt, foodIdInt);
+            changeStateWaitingFood(update);
+        } else if (isDefaultAndMessage(update, botState, "/deleteFood")) {
+            deleteFood(update);
         } else if (isItCatFeedMessage(update.getMessage().getText())) {
-            long chatId = update.getMessage().getChatId();
-            if (!catFed) {
-                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("k:mm");
-                Date currDate = new Date();
-                sendMessage(chatId, update.getMessage().getFrom().getFirstName() + " покормил(а) меня в " + simpleDateFormat.format(currDate) + "." +
-                        "\nУра! Теперь я сыт.");
-                catFed = true;
-                this.chatId = update.getMessage().getChatId();
-            } else {
+            sendFedMessage(update);
+        }
+    }
 
-                //String catNameDec = catName.substring(0, catName.length() - 1) + 'у';
-                sendMessage(chatId, "Меня уже покормили раньше.");
-            }
+    private void addCatFeed(Update update) {
+        botState = State.DEFAULT;
+        ArrayList<Food> allFood = whoFedTheCat.listFood();
+        int foodId = allFood.stream()
+                .filter(food -> update.getMessage().getText().equals(food.brandName()))
+                .toList().get(0).id();
+        whoFedTheCat.addCatFeed((int) personId, foodId);
+
+    }
+
+    private void deleteFood(Update update) {
+        String result = update.getMessage().getText().replaceAll("/deleteFood ", "");
+        int id = Integer.parseInt(result);
+        whoFedTheCat.deleteFood(id);
+        sendMessageWithKeyboard(chatId, whoFedTheCat.listFood().toString(), false);
+    }
+
+    private void sendFedMessage(Update update) {
+        long chatId = update.getMessage().getChatId();
+        if (!catFed) {
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("k:mm");
+            Date currDate = new Date();
+            sendMessageWithKeyboard(chatId, update.getMessage().getFrom().getFirstName() + " покормил(а) меня в " + simpleDateFormat.format(currDate) + "." +
+                    "\nУра! Теперь я сыт.", true);
+            catFed = true;
+            this.chatId = update.getMessage().getChatId();
+        } else {
+            sendMessageWithKeyboard(chatId, "Меня уже покормили раньше.", true);
+        }
+    }
+
+    private void changeStateWaitingFood(Update update) {
+        personId = getTelegramIdFromDB(update);
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Food");
+        message.setReplyMarkup(createFoodKeyboardRows());
+        try {
+            execute(message);
+            botState = State.WAITING_FOR_FOOD;
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
         }
     }
 
 
-    private void sendMessage(long chatId, String textToSend) {
+    private void sendMessageWithKeyboard(long chatId, String textToSend, boolean hideKeyboard) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(textToSend);
@@ -120,11 +126,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         row.add("Stats for today");
         row.add("Feed cat");
         keyboardRows.add(row);
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        keyboardMarkup.setResizeKeyboard(true);
-        keyboardMarkup.setKeyboard(keyboardRows);
-        message.setReplyMarkup(keyboardMarkup);
-
+        if (hideKeyboard) {
+            ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+            keyboardMarkup.setResizeKeyboard(true);
+            keyboardMarkup.setKeyboard(keyboardRows);
+            message.setReplyMarkup(keyboardMarkup);
+        }
         try {
             execute(message);
         } catch (TelegramApiException e) {
@@ -145,7 +152,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         catFed = false;
         if (chatId != 0) {
             String messageToSend = "Я хочу кушать, покормите меня!";
-            sendMessage(chatId, messageToSend);
+            sendMessageWithKeyboard(chatId, messageToSend, false);
         }
     }
 
@@ -156,7 +163,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     private boolean isDefaultAndMessage(Update update, State state, String botCommand) {
         return isHasText(update) && state.equals(State.DEFAULT) && update.getMessage().getText().equals(botCommand);
     }
-    private int getTelegramIdFromDB (Update update) {
+
+    private int getTelegramIdFromDB(Update update) {
         ArrayList<Person> allPeople = whoFedTheCat.listPeople();
         return allPeople.stream()
                 .filter(person -> update.getMessage().getFrom().getId() == Long.parseLong(person.telegramId()))
