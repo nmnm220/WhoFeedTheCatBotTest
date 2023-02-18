@@ -1,5 +1,6 @@
 package io.proj3ct.WhoFeedTheCatBot.service;
 
+import io.proj3ct.WhoFeedTheCatBot.TelegramState;
 import io.proj3ct.WhoFeedTheCatBot.WhoFedTheCat;
 import io.proj3ct.WhoFeedTheCatBot.WhoFedTheCatDB;
 import io.proj3ct.WhoFeedTheCatBot.config.BotConfig;
@@ -28,13 +29,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     private enum State {DEFAULT, WAITING_FOR_FOOD}
 
     private long personId;
-    private State botState = State.DEFAULT;
+    //private State botState = State.DEFAULT;
     private final WhoFedTheCat whoFedTheCat = new WhoFedTheCatDB();
     final BotConfig config;
     @Value("${bot.chat.id}")
     private long chatId;
     private boolean catFed = false;
     private final String catName = "Тиша";
+
+    private TelegramState<State> botState = new TelegramState<>();
 
     private final String catNameDec = catName.substring(0, catName.length() - 1) + 'у';
 
@@ -54,16 +57,17 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (isHasText(update) && botState.equals(State.WAITING_FOR_FOOD)) {
+        State state = botState.getState(Long.toString(chatId));
+        if (isHasText(update) && (state != null) && state.equals(State.WAITING_FOR_FOOD) ) {
             addCatFeed(update);
             sendFedMessage(update);
-        } else if (isDefaultAndMessage(update, botState, "/statsalltime")) {
+        } else if (isDefaultAndMessage(update, state, "/statsalltime")) {
             sendMessageWithKeyboard(chatId, whoFedTheCat.getStatsAllTime(), false);
-        } else if (isDefaultAndMessage(update, botState, "/statstoday")) {
+        } else if (isDefaultAndMessage(update, state, "/statstoday")) {
             sendMessageWithKeyboard(chatId, whoFedTheCat.getStatsDay(), false);
-        } else if (isDefaultAndMessage(update, botState, "/addCatFeed")) {
+        } else if (isDefaultAndMessage(update, state, "/addCatFeed")) {
             changeStateWaitingFood(update);
-        } else if (isDefaultAndMessage(update, botState, "/deleteFood")) {
+        } else if (isDefaultAndMessage(update, state, "/deleteFood")) {
             deleteFood(update);
         } else if (isItCatFeedMessage(update.getMessage().getText())) {
             sendFedMessage(update);
@@ -71,7 +75,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void addCatFeed(Update update) {
-        botState = State.DEFAULT;
+        botState.setState(Long.toString(chatId) ,State.DEFAULT);
         ArrayList<Food> allFood = whoFedTheCat.listFood();
         int foodId = allFood.stream()
                 .filter(food -> update.getMessage().getText().equals(food.brandName()))
@@ -109,7 +113,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         message.setReplyMarkup(createFoodKeyboardRows());
         try {
             execute(message);
-            botState = State.WAITING_FOR_FOOD;
+            botState.setState(Long.toString(chatId), State.WAITING_FOR_FOOD);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
